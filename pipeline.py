@@ -26,15 +26,16 @@ logging.basicConfig(
 log = logging.getLogger(__name__)
 
 # Caminho do arquivo bruto
-CAMINHO_BRUTO = r"C:\Users\austi\OneDrive\Documentos\Data_Estudos\dados_enem\DADOS\MICRODADOS_ENEM_2023.csv"
-CAMINHO_SAIDA = r"C:\Users\austi\OneDrive\Documentos\Data_Estudos\dados_enem\DADOS\enem_2023_tratado.csv"
+CAMINHO_BRUTO = r"C:\Users\austi\OneDrive\Documentos\Data_Estudos\enem-pipeline\dados_enem\DADOS\MICRODADOS_ENEM_2023.csv"
+CAMINHO_SAIDA = r"C:\Users\austi\OneDrive\Documentos\Data_Estudos\enem-pipeline\dados_enem\DADOS\enem_2023_tratado.csv"
+
 
 # Colunas que vamos usar — ignoramos o resto para economizar memoria
 COLUNAS = [
     # Identificacao
     "NU_ANO",
-    "NO_MUNICIPIO_RESIDENCIA",
-    "SG_UF_RESIDENCIA",
+    "NO_MUNICIPIO_PROVA",
+    "SG_UF_PROVA",
 
     # Notas
     "NU_NOTA_CN",       # Ciencias da Natureza
@@ -99,24 +100,27 @@ INTERNET = {
 # EXTRACT
 
 def extrair(caminho: str) -> pd.DataFrame:
-    log.info("EXTRACT — lendo microdados brutos...")
-    log.info("  Arquivo pode demorar alguns minutos por conta do tamanho.")
+    log.info("EXTRACT — lendo microdados em chunks...")
 
-    # O INEP usa encoding latin-1 e separador ponto e virgula
-    df = pd.read_csv(
+    chunks = []
+    for chunk in pd.read_csv(
         caminho,
         sep=";",
         encoding="latin-1",
         usecols=COLUNAS,
-        low_memory=False
-    )
+        low_memory=False,
+        chunksize=100000
+    ):
+        chunks.append(chunk)
+        log.info(f"  chunk carregado: {len(chunks) * 100000:,} linhas aprox.")
 
+    df = pd.concat(chunks, ignore_index=True)
     log.info(f"  {len(df):,} candidatos carregados")
     return df
 
 
 
-# TRANSFORM
+# TRANSFORM 
 
 def transformar(df: pd.DataFrame) -> pd.DataFrame:
     log.info("TRANSFORM — tratando e enriquecendo...")
@@ -160,8 +164,8 @@ def transformar(df: pd.DataFrame) -> pd.DataFrame:
     # Renomeia para facilitar a analise
     df = df.rename(columns={
         "NU_ANO":                 "ano",
-        "NO_MUNICIPIO_RESIDENCIA":"municipio",
-        "SG_UF_RESIDENCIA":       "uf",
+        "NO_MUNICIPIO_PROVA":     "municipio",
+        "SG_UF_PROVA":            "uf",
         "NU_NOTA_CN":             "nota_ciencias_natureza",
         "NU_NOTA_CH":             "nota_ciencias_humanas",
         "NU_NOTA_LC":             "nota_linguagens",
