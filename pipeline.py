@@ -14,6 +14,7 @@ Fonte:
 Autor: Austin
 """
 
+import awswrangler as wr
 import pandas as pd
 import os
 import logging
@@ -27,7 +28,7 @@ log = logging.getLogger(__name__)
 
 # Caminho do arquivo bruto
 CAMINHO_BRUTO = r"C:\Users\austi\OneDrive\Documentos\Data_Estudos\enem-pipeline\dados_enem\DADOS\MICRODADOS_ENEM_2023.csv"
-CAMINHO_SAIDA = r"C:\Users\austi\OneDrive\Documentos\Data_Estudos\enem-pipeline\dados_enem\DADOS\enem_2023_tratado.csv"
+CAMINHO_SAIDA = r"C:\Users\austi\OneDrive\Documentos\Data_Estudos\enem-pipeline\dados_enem\DADOS\enem_2023_tratado.parquet"
 
 
 # Colunas que vamos usar — ignoramos o resto para economizar memoria
@@ -187,14 +188,27 @@ def transformar(df: pd.DataFrame) -> pd.DataFrame:
 
 # LOAD
 
-def carregar(df: pd.DataFrame, caminho: str):
-    log.info(f"LOAD — salvando dataset tratado...")
-    os.makedirs(os.path.dirname(caminho), exist_ok=True)
-    df.to_csv(caminho, index=False, encoding="utf-8-sig")
-    log.info(f"  Salvo em: {caminho}")
-    log.info(f"  Total de registros: {len(df):,}")
+def carregar_para_aws(df: pd.DataFrame):
+    log.info("Enviando dados para o S3 e atualizando o Athena...")
+    
+    # Isso aqui faz a mágica: 
+    # 1. Salva no S3 como Parquet
+    # 2. Cria a tabela no banco de dados do Athena automaticamente
+    wr.s3.to_parquet(
+        df=df,
+        path="s3://NOME-DO-SEU-BUCKET/dados-tratados/", 
+        dataset=True,
+        database="enem_db",      # Nome do banco no Athena
+        table="microdados_2023", # Nome da tabela no Athena
+        mode="overwrite",        # Se rodar de novo, ele substitui
+        partition_cols=["uf"]    # IMPORTANTE: Particionar por UF economiza $$$ no Athena
+    )
+    log.info("Carga concluída na AWS!")
 
-
+if __name__ == "__main__":
+    df_bruto = extrair(CAMINHO_BRUTO)
+    df_tratado = transformar(df_bruto)
+    carregar_para_aws(df_tratado)
 
 # EXECUCAO
 

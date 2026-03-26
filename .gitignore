@@ -1,0 +1,17 @@
+# Dados brutos e tratados — nao versionar (arquivos grandes)
+dados_enem/
+ 
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+ 
+# OS
+.DS_Store
+Thumbs.db
+ 
+# IDEs
+.vscode/
+.idea/
+ 
