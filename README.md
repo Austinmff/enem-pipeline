@@ -1,6 +1,6 @@
 # Pipeline ENEM 2023 — Microdados INEP
 
-Python | Pandas | Parquet | AWS S3 | AWS Glue
+Python | Pandas | Parquet | AWS S3 | AWS Glue | Streamlit
 
 ---
 
@@ -8,11 +8,18 @@ Python | Pandas | Parquet | AWS S3 | AWS Glue
 
 Pipeline ETL modular para processamento dos microdados do ENEM 2023 — 3,9 milhões
 de registros, arquivo bruto de 2 GB+. Lê o CSV do INEP, trata encoding e variáveis
-codificadas, e carrega o resultado particionado no AWS S3 com catálogo no AWS Glue.
+codificadas, carrega o resultado particionado no AWS S3 com catálogo no AWS Glue,
+e disponibiliza os dados em um dashboard interativo com Streamlit.
 
-Este projeto é a etapa de engenharia de dados de uma análise sobre desigualdade
-educacional no Brasil. O dataset tratado está disponível para consulta via
-Amazon Athena e alimenta o projeto de análise exploratória `enem-analise-exploratoria`.
+---
+
+## Dashboard
+
+![KPIs, escola pública vs privada e renda](screenshots/01_kpis_escola_renda.png)
+
+![Impacto da internet e top municípios](screenshots/02_internet_municipios.png)
+
+![Ranking nacional](screenshots/03_ranking_nacional.png)
 
 ---
 
@@ -31,8 +38,11 @@ MICRODADOS_ENEM_2023.csv (2GB+)
   pipeline/carregar_aws.py — upload S3 + catálogo Glue
         |
         v
-s3://austin-datalake-enem-2023/processado/
+s3://seu-bucket/processado/
   particionado por uf=SP/, uf=RJ/, uf=SE/ ...
+        |
+        v
+  dashboard.py (Streamlit) — lê do S3, filtra por estado
 ```
 
 ---
@@ -42,12 +52,13 @@ s3://austin-datalake-enem-2023/processado/
 ```
 enem-pipeline/
 ├── main.py                  # orquestrador — ponto de entrada
-├── dashboard.py             # Streamlit (em desenvolvimento)
+├── dashboard.py             # dashboard Streamlit
 ├── pipeline/
 │   ├── __init__.py
 │   ├── extrair.py           # leitura do CSV bruto em chunks
 │   ├── transformar.py       # tratamento e enriquecimento
 │   └── carregar_aws.py      # carga no AWS S3 + Glue Catalog
+├── screenshots/             # prints do dashboard
 ├── requirements.txt
 ├── .gitignore
 └── README.md
@@ -68,13 +79,17 @@ renomeia as colunas para nomes legíveis.
 
 **carregar_aws.py** — envia o dataset tratado para o S3 em formato Parquet
 particionado por UF, e registra a tabela no AWS Glue Catalog. O database
-`enem_db` é criado automaticamente se não existir. O particionamento permite
-consultas no Amazon Athena lendo apenas o estado necessário, reduzindo custo
-e tempo de processamento.
+é criado automaticamente se não existir. O particionamento permite consultas
+no Amazon Athena lendo apenas o estado necessário.
+
+**dashboard.py** — dashboard Streamlit conectado ao S3. Lê apenas a partição
+do estado selecionado, sem baixar o dataset completo. Visões: escola pública
+vs privada, média por faixa de renda, impacto do acesso à internet, top 10
+municípios e ranking nacional dos 27 estados.
 
 ---
 
-## Variáveis do dataset de saída
+## Variáveis do dataset
 
 | Coluna | Descrição |
 |--------|-----------|
@@ -100,14 +115,18 @@ e tempo de processamento.
 
 Antes de executar, crie os recursos na sua conta AWS na região de sua preferência:
 
-Bucket S3 com o nome que preferir
-Credenciais configuradas via aws configure com permissões de S3 e Glue
+- Bucket S3 com o nome que preferir
+- Credenciais configuradas via `aws configure` com permissões de S3 e Glue
 
-Depois atualize as variáveis no início do pipeline/carregar_aws.py:
-pythonNOME_BUCKET   = "seu-bucket-aqui"
+Depois atualize as variáveis no início do `pipeline/carregar_aws.py`:
+
+```python
+NOME_BUCKET   = "seu-bucket-aqui"
 CAMINHO_S3    = f"s3://{NOME_BUCKET}/processado/"
 NOME_DATABASE = "enem_db"
 NOME_TABELA   = "microdados_2023"
+```
+
 O database no Glue é criado automaticamente pelo pipeline se não existir.
 
 ---
@@ -118,15 +137,10 @@ O database no Glue é criado automaticamente pelo pipeline se não existir.
 pip install -r requirements.txt
 aws configure
 python main.py
+streamlit run dashboard.py
 ```
 
-O processo leva entre 5 e 15 minutos dependendo da máquina.
-
----
-
-## Próximos passos
-
-- Dashboard Streamlit (`dashboard.py`) para visualização dos dados por estado
+O pipeline leva entre 5 e 15 minutos dependendo da máquina.
 
 ---
 

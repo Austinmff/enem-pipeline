@@ -22,13 +22,11 @@ PATH_S3  = f"s3://{BUCKET}/processado/"
 
 @st.cache_data
 def carregar_ufs():
-    df_temp = wr.s3.read_parquet(
-        path=PATH_S3,
-        dataset=True,
-        columns=["uf"],
-        boto3_session=boto3_session
-    )
-    return sorted(df_temp["uf"].unique())
+    return sorted([
+        'AC','AL','AM','AP','BA','CE','DF','ES','GO',
+        'MA','MG','MS','MT','PA','PB','PE','PI','PR',
+        'RJ','RN','RO','RR','RS','SC','SE','SP','TO'
+    ])
 
 
 @st.cache_data
