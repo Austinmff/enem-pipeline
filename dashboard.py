@@ -18,7 +18,7 @@ def get_connection():
 con = get_connection()
 
 
-# --- SIDEBAR / FILTROS ---
+# SIDEBAR / FILTROS 
 st.sidebar.header("Filtros")
 
 
